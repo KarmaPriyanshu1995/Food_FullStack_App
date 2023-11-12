@@ -4,28 +4,79 @@ import { LoginInput } from "../components";
 import { FaEnvelope, FaLock, FcGoogle } from "../assets/icons";
 import { motion } from "framer-motion";
 import { buttonClick } from "../animation";
-
-import {getAuth,signInWithPopup,GoogleAuthProvider} from 'firebase/auth'
-import {app} from '../config/firebase.config'
+import { useNavigate } from "react-router-dom"
+import {getAuth,signInWithPopup,GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword} from 'firebase/auth'
+import {app, auth} from '../config/firebase.config'
+import { validateUserJWTToken } from "../api";
+import { FirebaseError } from "firebase/app";
+import { setUserDetails } from "../context/actions/usersActions";
+import {useDispatch} from 'react-redux'
 const Login = () => {
   const [userEmail, setuserEmail] = useState("");
   const [isSignUp, setisSignUp] = useState(false);
   const [password, setpassword] = useState("");
   const [confirm, setconfirm] = useState();
-
-  const firebaseAuth = getAuth(app);
+const dispatch = useDispatch()
+  const firebaseAuth = getAuth(app)
   const provider = new GoogleAuthProvider();
-
+const navigate =useNavigate()
   const loginWithGoogle = async()=>{
-    await signInWithPopup(firebaseAuth,provider).then((userCred)=>{
+    await signInWithPopup(auth,provider).then((result)=>{
       firebaseAuth.onAuthStateChanged((cred)=>{
+        console.log(cred,"AuthPrepration")//eshma aa raha ha data
         if(cred){
           cred.getIdToken().then((token)=>{
-            console.log(token)
+            console.log('token', token)
+            validateUserJWTToken(token).then(data =>{
+             // console.log(data,"[][]][][][][][][")  // ye null aa raha ha      
+             dispatch(setUserDetails(data))    
+             })
           })
+          navigate("/",{replace:true})
         }
       })
     })
+  }
+
+  const signupWithEmailPass =async ()=>{
+    if(userEmail === "" || password === "" || confirm === ""){
+
+    }else{
+      if(password === confirm){
+        setuserEmail("")
+        setconfirm("")
+        setpassword("")
+      await createUserWithEmailAndPassword(auth,userEmail,password).then((userCred)=>{
+        firebaseAuth.onAuthStateChanged((cred)=>{
+        if(cred){
+          cred.getIdToken().then((token)=>{
+            validateUserJWTToken(token).then((data)=>{
+             dispatch(setUserDetails(data))    
+            })
+            navigate("/",{replace:true})
+          })
+        }
+      })
+       })
+      }
+    }
+  }
+
+  const signInWithEmailPass = async ()=>{
+   if(userEmail !== "" && password !== ""){
+   await signInWithEmailAndPassword(auth,userEmail,password).then((userCred)=>{
+    firebaseAuth.onAuthStateChanged((cred)=>{
+      if(cred){
+        cred.getIdToken().then((token)=>{
+          validateUserJWTToken(token).then((data)=>{
+           dispatch(setUserDetails(data))    
+          })
+          navigate("/",{replace:true})
+        })
+      }
+    }) 
+   })
+   } 
   }
   return (
     <div className="w-screen h-screen relative overflow-hidden flex">
@@ -96,9 +147,11 @@ const Login = () => {
             </p>
           )}
           {/* button Section */}
-          {isSignUp?<motion.button {...buttonClick} className="w-full px-4 py-2 bg-red-400 rounded-md cursor-pointer text-white capitalize hover:bg-red-600 transition-all duration-150">
+          {isSignUp?<motion.button {...buttonClick} className="w-full px-4 py-2 bg-red-400 rounded-md cursor-pointer text-white capitalize hover:bg-red-600 transition-all duration-150" 
+          onClick={signupWithEmailPass}>
            Sign Up
-          </motion.button>:<motion.button {...buttonClick} className="w-full px-4 py-2 bg-red-400 rounded-md cursor-pointer text-white capitalize hover:bg-red-600 transition-all duration-150">
+          </motion.button>:<motion.button {...buttonClick} className="w-full px-4 py-2 bg-red-400 rounded-md cursor-pointer text-white capitalize hover:bg-red-600 transition-all duration-150" 
+          onClick={signInWithEmailPass}>
           Sign In
           </motion.button>}
         </div>
