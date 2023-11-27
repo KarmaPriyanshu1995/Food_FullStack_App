@@ -34,4 +34,4 @@ const DBItems = () => {
   </div>
   )
 }
-export default DBItems
+export default DBItems;
